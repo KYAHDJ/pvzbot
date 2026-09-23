@@ -1,0 +1,70 @@
+namespace PvZController;
+
+internal static class Pvz1073Profile
+{
+    internal const string ExpectedSha256 = "1FF5A2DCF009B453B8866783A68E8D04BD0D066ABDA3F8196D75A677366B2DFF";
+    internal const uint ExpectedPeTimestamp = 0x4C2E3453;
+    internal const uint Lawn = 0x00729670;
+    internal const uint Board = 0x868;
+    internal const uint PlantArray = 0xC4;
+    internal const uint PlantCountMax = 0xC8;
+    internal const uint PlantRow = 0x1C;
+    internal const uint PlantType = 0x24;
+    internal const uint PlantColumn = 0x28;
+    internal const uint PlantDead = 0x141;
+    internal const uint PlantSquished = 0x142;
+    internal const uint PlantStructSize = 0x14C;
+    internal const uint FrameDuration = 0x4B4;
+    internal const uint GameMode = 0x918;
+    internal const uint GameUi = 0x91C;
+    internal const uint SeedChooser = 0x874;
+    internal const uint FreePlanting = 0x934;
+    internal const uint Scene = 0x5564;
+    internal const uint BlockType = 0x180;
+    internal const uint RowType = 0x5F0;
+    internal const uint Sun = 0x5578;
+    internal const uint Challenge = 0x178;
+    internal const uint EndlessRounds = 0x6C;
+    internal const uint GamePaused = 0x17C;
+    internal const uint SeedBank = 0x15C;
+    internal const uint BoardShowShovel = 0x5609;
+    internal const uint WidgetY = 0x0C;
+    internal const uint SeedCount = 0x24;
+    internal const uint SeedPacketSize = 0x50;
+    internal const uint SeedRefreshing = 0x71;
+    internal const uint SeedCooldownPast = 0x4C;
+    internal const uint SeedCooldownTotal = 0x50;
+    internal const uint SeedType = 0x5C;
+    internal const uint SeedImitaterType = 0x60;
+    internal const uint ZombieArray = 0xA8;
+    internal const uint ZombieCountMax = 0xAC;
+    internal const uint ZombieStructSize = 0x168;
+    internal const uint ZombieRow = 0x1C;
+    internal const uint ZombieType = 0x24;
+    internal const uint ZombieX = 0x2C;
+    internal const uint ZombieHealth = 0xC8;
+    internal const uint ZombieHelmHealth = 0xD0;
+    internal const uint ZombieShieldHealth = 0xDC;
+    internal const uint ZombieDead = 0xEC;
+
+    internal const uint BlockMainLoop = 0x005D6C6E;
+    internal const byte BlockMainLoopOriginal = 0xC8;
+    internal const byte BlockMainLoopEnabled = 0xFE;
+    internal const uint AutoCollected = 0x004342F2;
+    internal const byte AutoCollectedOriginal = 0x75;
+    internal const byte AutoCollectedEnabled = 0xEB;
+    internal const uint BackgroundRunning = 0x005D21D9;
+    internal static readonly byte[] BackgroundRunningOriginal = [0x74, 0x40];
+    internal static readonly byte[] BackgroundRunningEnabled = [0xEB, 0x00];
+
+    internal const uint CallPutPlant = 0x0040FA10;
+    internal const uint CallPickBackground = 0x0040B690;
+    internal const uint CallPutZombie = 0x0042CC90;
+    internal const uint CallChooseSeed = 0x00490C20;
+    internal const uint CallUnchooseSeed = 0x00490A80;
+    internal const uint CallLandChosenSeed = 0x0048FC00;
+    internal const uint CallChooserButton = 0x004907B0;
+    internal const uint ChosenSeeds = 0xBC;
+    internal const uint ChosenSeedSize = 0x3C;
+    internal const int LetsRockButtonId = 100;
+}

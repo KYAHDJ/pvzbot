@@ -1,7 +1,7 @@
-# PvZ GOTY - proprietary game files - DO NOT COMMIT
-Game/
-Controller/
-SaveBackup/
+# Previously excluded per request 2026-09-24 now included
+# Game/ - included per user request (proprietary, ~50MB)
+# Controller/ - included per user request (built runtime)
+# SaveBackup/ - included per user request
 # Build outputs
 **/bin/
 **/obj/
@@ -15,6 +15,5 @@ C:\Temp\pvz_publish/
 Thumbs.db
 Desktop.ini
 *.log
-# Sensitive / local
+# Sensitive / local - kept ignored
 userdata/
-*.dat
