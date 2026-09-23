@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PvZController.LiveCheck/PvZController.LiveCheck.csproj" />
+  <Project Path="PvZController/PvZController.csproj" />
+</Solution>
