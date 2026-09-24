@@ -10057,7 +10057,7 @@ internal sealed class PersonaLines
         if (available.Length == 0) available = choices;
         var result = available[Random.Shared.Next(available.Length)];
         _recent.Enqueue(result);
-        while (_recent.Count > 20) _recent.Dequeue();
+        while (_recent.Count > 50) _recent.Dequeue();
         return result;
     }
 }

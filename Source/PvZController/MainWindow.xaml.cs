@@ -276,10 +276,13 @@ public partial class MainWindow : Window
                 case "ClearAllPlants": _pvz.ClearAllPlants(); break;
                 case "PutZombie":
                 {
-                    if (_pvz.ReadZombies().Count >= 45)
+                    var count = 0;
+                    try { count = _pvz.ReadZombies().Count; } catch { }
+                    if (count >= 45)
                     {
                         Log("STREAM zombie spawn deferred: 45 zombies are already on screen.");
-                        return;
+                        // Still react with voice even when deferred
+                        break;
                     }
                     var state = _pvz.ReadState();
                     var rows = state.Scene is 2 or 3 ? 6 : 5;
@@ -305,7 +308,7 @@ public partial class MainWindow : Window
                     break;
             }
             Log($"STREAM → {effect.Id}");
-            SayCategory(StreamCategory(effect.Id), urgent: true);
+            SayCategoryInterrupt(StreamCategory(effect.Id));
         }
         catch (Exception ex) { Log($"STREAM {effect.Id} failed: {ex.Message}"); }
     }
@@ -315,6 +318,13 @@ public partial class MainWindow : Window
         if (VoiceCheck.IsChecked != true) return;
         var line = _persona.Next(category);
         if (_voice.TrySay(line, urgent)) Log($"VOICE → {line}");
+    }
+
+    private void SayCategoryInterrupt(string category)
+    {
+        if (VoiceCheck.IsChecked != true) return;
+        var line = _persona.Next(category);
+        if (_voice.InterruptAndSay(line)) Log($"VOICE → {line} [CHAT]");
     }
 
     private void CommentOnBattle(IReadOnlyList<ZombieState> zombies)

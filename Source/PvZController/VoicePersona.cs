@@ -14,6 +14,8 @@ internal sealed class VoicePersona : IDisposable
     private readonly AutoResetEvent _wake = new(false);
     private readonly Thread _speaker;
     private readonly object _gate = new();
+    private readonly object _playerLock = new();
+    private SoundPlayer? _currentPlayer;
     private DateTime _nextLine = DateTime.MinValue;
     private int _pending;
     private bool _disposed;
@@ -50,6 +52,31 @@ internal sealed class VoicePersona : IDisposable
             if (_disposed || _pending >= 8) return false;
             _pending++;
             _lines.Enqueue(line);
+            _wake.Set();
+            return true;
+        }
+    }
+
+    internal bool InterruptAndSay(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line) || line.Length > 180) return false;
+        lock (_gate)
+        {
+            if (_disposed) return false;
+            // Clear pending queue for instant reaction to chat
+            while (_lines.TryDequeue(out _)) { }
+            _pending = 0;
+            _nextLine = DateTime.UtcNow;
+        }
+        lock (_playerLock)
+        {
+            try { _currentPlayer?.Stop(); } catch { }
+        }
+        lock (_gate)
+        {
+            _pending = 1;
+            _lines.Enqueue(line);
+            _nextLine = DateTime.UtcNow.AddMilliseconds(50);
             _wake.Set();
             return true;
         }
@@ -107,8 +134,9 @@ internal sealed class VoicePersona : IDisposable
             AmplifyPcm16(wave);
             Speaking?.Invoke(line);
             using var audio = new MemoryStream(wave, writable: false);
-            using var player = new SoundPlayer(audio);
-            player.PlaySync();
+            var player = new SoundPlayer(audio);
+            lock (_playerLock) _currentPlayer = player;
+            try { player.PlaySync(); } finally { lock (_playerLock) if (_currentPlayer == player) _currentPlayer = null; }
         }
         finally
         {
