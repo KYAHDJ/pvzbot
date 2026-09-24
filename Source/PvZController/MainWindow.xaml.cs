@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private readonly PvzProcess _pvz = new();
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _botTimer;
+    private readonly DispatcherTimer _yapTimer;
     private readonly AutoPlantStrategy _strategy = new();
     private readonly VirtualArsenal _virtualArsenal = new();
     private readonly StreamToEarnBridge _streamBridge = new();
@@ -20,6 +21,8 @@ public partial class MainWindow : Window
     private readonly SubtitleWindow _subtitle = new();
     private readonly UninterruptedSpawner _spawner = new();
     private DateTime _nextBattleCommentary = DateTime.MinValue;
+    private DateTime _lastChatTime = DateTime.MinValue;
+    private string _lastChatEffect = "";
     private readonly ConcurrentQueue<StreamEffect> _streamEffects = new();
     private readonly DispatcherTimer _streamTimer;
     private int _queuedStreamEffects;
@@ -46,6 +49,9 @@ public partial class MainWindow : Window
         _refreshTimer.Start();
         _botTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _botTimer.Tick += (_, _) => RunBotTick();
+        _yapTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2100) };
+        _yapTimer.Tick += (_, _) => ContinuousYap();
+        _yapTimer.Start();
         _streamTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
         _streamTimer.Tick += (_, _) =>
         {
@@ -217,6 +223,7 @@ public partial class MainWindow : Window
     {
         _refreshTimer.Stop();
         _botTimer.Stop();
+        _yapTimer.Stop();
         _streamTimer.Stop();
         StopBot();
         _streamBridge.Dispose();
@@ -256,6 +263,9 @@ public partial class MainWindow : Window
         {
             TryAutoAttachAndRun();
             if (!_pvz.IsConnected) throw new InvalidOperationException("PvZ is not running.");
+            // Track last chat time for separating chat vs bored lines
+            _lastChatTime = DateTime.UtcNow;
+            _lastChatEffect = effect.Id;
             switch (effect.Id)
             {
                 case "EasyStart": _botRunning = true; _botTimer.Start(); break;
@@ -278,18 +288,24 @@ public partial class MainWindow : Window
                 }
                 case "PutPlant":
                 {
-                    var state = _pvz.ReadState();
-                    var rows = state.Scene is 2 or 3 ? 6 : 5;
-                    var occupied = _pvz.ReadPlants().Select(p => (p.Row,p.Column)).ToHashSet();
-                    var open = (from r in Enumerable.Range(0, rows) from c in Enumerable.Range(0, 9)
-                                where !occupied.Contains((r,c)) select (r,c)).OrderBy(_ => Random.Shared.Next()).FirstOrDefault();
-                    _pvz.PlacePlant(open.r, open.c, ResolveItem(effect.Payload, "type", Plants));
+                    // Chat can't plant per user request - log but don't place, just voice
+                    Log($"STREAM PutPlant ignored - chat can only spawn zombies / clear plants");
                     break;
                 }
-                default: Log($"STREAM effect not implemented yet: {effect.Id}"); return;
+                // Gifts / Follows / Likes via StreamToEarn - separate from bored yapping
+                case "Gift":
+                case "Follow":
+                case "Like":
+                case "Share":
+                case "Donation":
+                    // No game action, just voice
+                    break;
+                default: Log($"STREAM effect not implemented yet: {effect.Id}"); 
+                    // Still voice for unknown gift-like effects
+                    break;
             }
             Log($"STREAM → {effect.Id}");
-            SayCategory(StreamCategory(effect.Id));
+            SayCategory(StreamCategory(effect.Id), urgent: true);
         }
         catch (Exception ex) { Log($"STREAM {effect.Id} failed: {ex.Message}"); }
     }
@@ -304,7 +320,7 @@ public partial class MainWindow : Window
     private void CommentOnBattle(IReadOnlyList<ZombieState> zombies)
     {
         if (DateTime.UtcNow < _nextBattleCommentary) return;
-        // Only talk when something is actually happening on screen
+        // Only talk when something is actually happening on screen - no random chatter
         if (zombies.Count >= 8 && zombies.Min(z => z.X) < 420)
         {
             SayCategory("breach", urgent: true);
@@ -320,12 +336,52 @@ public partial class MainWindow : Window
             SayCategory("ordinary");
             _nextBattleCommentary = DateTime.UtcNow.AddSeconds(12);
         }
-        // If 0-3 zombies, stay quiet - don't spam when nothing is happening
+        // If 0-3 zombies, stay quiet here - ContinuousYap will handle bored/taunt
+    }
+
+    private void ContinuousYap()
+    {
+        if (VoiceCheck.IsChecked != true) return;
+        // Don't spam chat lines when no chat - use bored/taunt when quiet
+        var sinceChat = DateTime.UtcNow - _lastChatTime;
+        // If recent chat (within 10s), let HandleStreamEffect handle it, don't yap chat lines
+        if (sinceChat < TimeSpan.FromSeconds(10)) return;
+        try
+        {
+            var state = _pvz.ReadState();
+            if (!state.HasBoard || state.GameUi != 3)
+            {
+                // Not in battle - occasional bored challenge
+                if (DateTime.UtcNow - _lastChatTime > TimeSpan.FromSeconds(20))
+                    SayCategory(Random.Shared.Next(2)==0 ? "bored" : "taunt");
+                return;
+            }
+            var zombies = _pvz.ReadZombies();
+            // Only yap if there is something to say based on screen, or bored
+            if (zombies.Count >= 4)
+            {
+                // Let CommentOnBattle handle the timing, but we can force a yap if it's been a while
+                // This ensures continuous yapping with 2s breather via VoicePersona gap
+                if (DateTime.UtcNow >= _nextBattleCommentary)
+                    CommentOnBattle(zombies);
+            }
+            else
+            {
+                // No zombies, no recent chat - bored, challenge chat because no one is trying
+                SayCategory(Random.Shared.Next(2)==0 ? "bored" : "taunt");
+            }
+        }
+        catch { }
     }
 
     private static string StreamCategory(string effect) => effect switch
     {
-        "PutZombie" or "PutPlant" or "ClearAllPlants" or "KillAllZombies" or "SetSun" => effect,
+        "PutZombie" or "ClearAllPlants" or "KillAllZombies" or "SetSun" => effect,
+        "PutPlant" => "other", // chat can't plant per user, don't use PutPlant voice
+        "Gift" or "gift" or "Donation" or "donation" => "other",
+        "Follow" or "follow" or "Follower" => "other",
+        "Like" or "like" or "Likes" => "other",
+        "Share" or "share" => "other",
         _ => "other"
     };
 
