@@ -259,9 +259,22 @@ internal sealed class PvzProcess : IDisposable
             WriteInt32(board + Pvz1073Profile.BoardHugeWaveCountDown, 9999);
             WriteInt32(board + Pvz1073Profile.BoardProgressMeterWidth, 0);
             WriteInt32(board + Pvz1073Profile.BoardFlagRaiseCounter, 0);
+            // Hide bottom-right "Survival Day Endless X flags completed" text
+            // by nuking the wave counts and survival stage display.
+            WriteInt32(board + Pvz1073Profile.BoardNumWaves, 0);
+            try
+            {
+                var challenge = ReadUInt32(board + Pvz1073Profile.Challenge);
+                if (challenge != 0)
+                {
+                    // mSurvivalStage display - set to 0 to hide "2 flags completed"
+                    WriteInt32(challenge + Pvz1073Profile.EndlessRounds, 0);
+                    // Also try to kill any flag meter text offset nearby (extra safety)
+                    // The flag text is derived from these, so zeroing is enough.
+                }
+            }
+            catch { }
             // Keep wave index stable so the game never thinks it reached the last wave.
-            // Do not reset to 0 every frame in a way that breaks zombie spawning bookkeeping;
-            // clamp it to 0 if it advances beyond 0.
             var cur = ReadInt32(board + Pvz1073Profile.BoardCurrentWave);
             if (cur != 0) WriteInt32(board + Pvz1073Profile.BoardCurrentWave, 0);
         }

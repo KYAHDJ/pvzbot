@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private readonly PvzProcess _pvz = new();
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _botTimer;
+    private readonly DispatcherTimer _yapTimer;
     private readonly AutoPlantStrategy _strategy = new();
     private readonly VirtualArsenal _virtualArsenal = new();
     private readonly StreamToEarnBridge _streamBridge = new();
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
     private readonly SubtitleWindow _subtitle = new();
     private readonly UninterruptedSpawner _spawner = new();
     private DateTime _nextBattleCommentary = DateTime.MinValue;
+    private DateTime _nextYap = DateTime.MinValue;
     private readonly ConcurrentQueue<StreamEffect> _streamEffects = new();
     private readonly DispatcherTimer _streamTimer;
     private int _queuedStreamEffects;
@@ -46,6 +48,9 @@ public partial class MainWindow : Window
         _refreshTimer.Start();
         _botTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         _botTimer.Tick += (_, _) => RunBotTick();
+        _yapTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+        _yapTimer.Tick += (_, _) => ConstantYap();
+        _yapTimer.Start();
         _streamTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
         _streamTimer.Tick += (_, _) =>
         {
@@ -217,6 +222,7 @@ public partial class MainWindow : Window
     {
         _refreshTimer.Stop();
         _botTimer.Stop();
+        _yapTimer.Stop();
         _streamTimer.Stop();
         StopBot();
         _streamBridge.Dispose();
@@ -307,22 +313,40 @@ public partial class MainWindow : Window
         if (zombies.Count >= 8 && zombies.Min(z => z.X) < 420)
         {
             SayCategory("breach", urgent: true);
-            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(40);
+            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(5);
         }
         else if (zombies.Count >= 8)
         {
             SayCategory("horde");
-            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(55);
+            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(6);
         }
         else if (zombies.Count > 0)
         {
             SayCategory("ordinary");
-            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(85);
+            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(7);
         }
         else
         {
-            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(60);
+            // Even when empty, keep yapping - no breather
+            SayCategory("ordinary");
+            _nextBattleCommentary = DateTime.UtcNow.AddSeconds(5);
         }
+    }
+
+    private void ConstantYap()
+    {
+        if (VoiceCheck.IsChecked != true) return;
+        if (DateTime.UtcNow < _nextYap) return;
+        // Constant yapping: 75% chance each tick, no long breather, always forming words
+        if (Random.Shared.NextDouble() > 0.78) { _nextYap = DateTime.UtcNow.AddMilliseconds(600); return; }
+        var cats = new[] { "ordinary", "horde", "other", "connect", "start" };
+        // Occasionally challenge chat directly
+        if (Random.Shared.Next(5) == 0) cats = new[] { "PutZombie", "PutPlant", "ClearAllPlants", "other" };
+        var cat = cats[Random.Shared.Next(cats.Length)];
+        var line = _persona.Next(cat);
+        // Use Force to bypass tiny gap and keep queue full - constant talk
+        if (_voice.TrySayForce(line)) Log($"VOICE → {line}");
+        _nextYap = DateTime.UtcNow.AddMilliseconds(900 + Random.Shared.Next(1100));
     }
 
     private static string StreamCategory(string effect) => effect switch

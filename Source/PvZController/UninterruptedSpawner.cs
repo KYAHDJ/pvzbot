@@ -52,15 +52,17 @@ internal sealed class UninterruptedSpawner
 
     private int PickType(int tier)
     {
-        // Day dry-land only – no Dolphin/Snorkel/Ducky, no Zamboni/Bobsled.
-        // Weighted pools per tier.
+        // EASY ONLY - per user request: no giant/bungee/hard zombies.
+        // Only basic Day zombies so chat via StreamToEarn makes it hard, not the game.
+        // Types: 0 Zombie, 1 Flag, 2 Conehead, 3 Pole Vault, 4 Bucket, 5 Newspaper, 6 Screen Door
+        // Football (7) is borderline, keep rare. No Dancing, no Balloon, no Digger, no Catapult, no Gargantuar etc.
         return tier switch
         {
-            0 => Weighted([0, 0, 0, 2, 2, 1, 1, 5]), // normal, cone, newspaper, pole
-            1 => Weighted([0,0,2,2,4,4,6,5,3,18]), // add bucket, football light
-            2 => Weighted([2,4,4,6,7,8,12,16,17,18,21,3]),
-            3 => Weighted([4,4,6,7,12,15,16,18,21,22,23,24,32]),
-            _ => Weighted([4,6,7,12,17,18,21,22,23,24,32,15,16]),
+            0 => Weighted([0, 0, 0, 2, 2, 1]), // mostly normal + cone
+            1 => Weighted([0, 2, 2, 4, 5, 3]), // add bucket, newspaper, pole
+            2 => Weighted([0, 2, 4, 5, 6, 3, 1]), // add screen door, flag
+            3 => Weighted([2, 4, 6, 5, 3, 0, 1, 7]), // football rare
+            _ => Weighted([2, 4, 6, 5, 0, 3, 1]), // keep easy forever
         };
     }
 

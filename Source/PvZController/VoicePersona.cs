@@ -32,9 +32,24 @@ internal sealed class VoicePersona : IDisposable
         if (string.IsNullOrWhiteSpace(line) || line.Length > 180) return false;
         lock (_gate)
         {
-            if (_disposed || DateTime.UtcNow < _nextLine || _pending >= 2) return false;
-            // 5-10 sec quiet gap after each completed line; urgent events get shorter gap but still no overlap.
-            _nextLine = DateTime.UtcNow.AddSeconds(urgent ? 5.5 : 8.0);
+            if (_disposed || _pending >= 10) return false;
+            // Constant talk mode: tiny gap, always forming words. No breather.
+            // User wants non-stop yapping, so we keep gap minimal.
+            if (DateTime.UtcNow < _nextLine && !urgent) return false;
+            _nextLine = DateTime.UtcNow.AddSeconds(urgent ? 0.8 : 1.6);
+            _pending++;
+            _lines.Enqueue(line);
+            _wake.Set();
+            return true;
+        }
+    }
+
+    internal bool TrySayForce(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line) || line.Length > 180) return false;
+        lock (_gate)
+        {
+            if (_disposed || _pending >= 12) return false;
             _pending++;
             _lines.Enqueue(line);
             _wake.Set();
