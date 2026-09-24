@@ -32,24 +32,9 @@ internal sealed class VoicePersona : IDisposable
         if (string.IsNullOrWhiteSpace(line) || line.Length > 180) return false;
         lock (_gate)
         {
-            if (_disposed || _pending >= 10) return false;
-            // Constant talk mode: tiny gap, always forming words. No breather.
-            // User wants non-stop yapping, so we keep gap minimal.
-            if (DateTime.UtcNow < _nextLine && !urgent) return false;
-            _nextLine = DateTime.UtcNow.AddSeconds(urgent ? 0.8 : 1.6);
-            _pending++;
-            _lines.Enqueue(line);
-            _wake.Set();
-            return true;
-        }
-    }
-
-    internal bool TrySayForce(string line)
-    {
-        if (string.IsNullOrWhiteSpace(line) || line.Length > 180) return false;
-        lock (_gate)
-        {
-            if (_disposed || _pending >= 12) return false;
+            if (_disposed || DateTime.UtcNow < _nextLine || _pending >= 3) return false;
+            // Reactive only: 4-7 sec gap, not constant. Only talks when needed (screen or chat).
+            _nextLine = DateTime.UtcNow.AddSeconds(urgent ? 3.5 : 6.0);
             _pending++;
             _lines.Enqueue(line);
             _wake.Set();
