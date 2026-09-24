@@ -47,7 +47,7 @@ internal sealed class AutoPlantStrategy
         var cactus = FindSeed(usable, 26);
         if (cactus is not null)
             foreach (var row in Enumerable.Range(0, rows)
-                         .Where(r => !plants.Any(p => p.Row == r && p.Type == 26))
+                         .Where(r => plants.Count(p => p.Row == r && p.Type == 26) < 2)
                          .OrderByDescending(r => balloonRows.Any(z => z.Row == r))
                          .ThenByDescending(r => threats.First(t => t.Row == r).Score))
                 if (FindOpenFrom(plants, row, [0,1,2,3,4,5,6]) is int col)
@@ -109,12 +109,12 @@ internal sealed class AutoPlantStrategy
                                    Math.Min(2, zombies.Count(z => z.Row == r) / 3))
                      .ThenByDescending(r => threats.First(t => t.Row == r).Score))
         {
-            if (plants.Count(p => p.Row == row && IsAttacker(p.Type)) >= 7) continue;
+            if (plants.Count(p => p.Row == row && IsAttacker(p.Type)) >= 8) continue;
             foreach (var type in SustainedAttackers)
             {
-                if (plants.Count(p => p.Row == row && p.Type == type) >= (type == 39 ? 3 : type == 7 ? 2 : 1)) continue;
-                if (type == 18 && row is 0 or 4 && plants.Count(p => p.Row == row && IsAttacker(p.Type)) >= 4) continue;
-                if (FindSeed(usable, type) is { } seed && FindOpenFrom(plants, row, new[] { 2,3,4,5,6 }
+                // No limit of one per row - allow up to 5-6 of same type per row, no empty slots
+                if (plants.Count(p => p.Row == row && p.Type == type) >= 5) continue;
+                if (FindSeed(usable, type) is { } seed && FindOpenFrom(plants, row, new[] { 2,3,4,5,6,1,0,7,8 }
                         .Where(c => 80 + c * 80 < threats.First(t => t.Row == row).ClosestX - 20)) is int col)
                     return WithBase(state.Scene, plants, usable, seed, row, col, "reinforce underfilled row");
             }
@@ -145,13 +145,12 @@ internal sealed class AutoPlantStrategy
                 return PlantAction.Shovel(row, backWall.Column, backWall.Type, "clear misplaced rear wall");
         }
 
-        // One Snow Pea per row supplies a consistent slow line without
-        // filling the entire lawn with duplicate support plants.
+        // Snow Pea per row - allow up to 2 for consistent slow, but fill all slots
         if (FindSeed(usable, 5) is { } supportSnow)
             foreach (var row in Enumerable.Range(0, rows)
-                         .Where(r => !plants.Any(p => p.Row == r && p.Type == 5))
+                         .Where(r => plants.Count(p => p.Row == r && p.Type == 5) < 2)
                          .OrderByDescending(r => threats.First(t => t.Row == r).Score))
-                if (FindOpenFrom(plants, row, new[] { 1,0,2,3 }
+                if (FindOpenFrom(plants, row, new[] { 1,0,2,3,4,5,6 }
                         .Where(c => 80 + c * 80 < threats.First(t => t.Row == row).ClosestX - 20)) is int col)
                     return WithBase(state.Scene, plants, usable, supportSnow, row, col, "complete slow coverage");
 
@@ -168,19 +167,22 @@ internal sealed class AutoPlantStrategy
                 plants.Any(p => p.Row == oldCactus.Row && p.Type == 26 && p.Column <= 2))
                 return PlantAction.Shovel(oldCactus.Row, oldCactus.Column, oldCactus.Type, "clear duplicate midfield Cactus");
 
-        // Upgrade a settled row without leaving it exposed during a wave.
+        // Upgrade a settled row - max out all upgrades, allow 2-3 per row, no empty slots
         if (state.Scene == 0)
             foreach (var (baseType, upgradeType) in new[] { (39,44), (7,40) })
                 if (FindSeed(usable, upgradeType) is not null)
                     foreach (var row in Enumerable.Range(0, rows)
-                                 .Where(r => threats.First(t => t.Row == r).ClosestX > 700))
+                                 .Where(r => threats.First(t => t.Row == r).ClosestX > 400))
                     {
-                        if (plants.Any(p => p.Row == row && p.Type == upgradeType)) continue;
-                        if (FindOpenFrom(plants, row, [2,3,4,5,6]) is not null) continue;
+                        if (plants.Count(p => p.Row == row && p.Type == upgradeType) >= 3) continue;
+                        // Allow upgrading even if there are empty slots - always max out
                         var surplus = plants.Where(p => p.Row == row && p.Type == baseType)
                             .OrderByDescending(p => p.Column).FirstOrDefault();
                         if (surplus is not null)
                             return PlantAction.Shovel(row, surplus.Column, surplus.Type, $"make room for stronger {PlantAction.PlantName(upgradeType)}");
+                        // Also allow direct planting of upgraded type if base not present but slots open
+                        if (FindOpenFrom(plants, row, new[] { 2,3,4,5,6 }) is int col2 && FindSeed(usable, upgradeType) is { } upSeed)
+                            return WithBase(state.Scene, plants, usable, upSeed, row, col2, $"add upgraded {PlantAction.PlantName(upgradeType)}");
                     }
 
         if (FindSeed(usable, 22) is { } torchwood)
