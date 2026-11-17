@@ -1,0 +1,23 @@
+PvZ SMART CONTROLLER
+
+1. Start Plants vs. Zombies.
+2. Open PvZController.exe.
+3. Click Connect.
+4. Keep "Auto-choose plants and press Let's Rock" checked.
+5. Enter Adventure or another normal level.
+6. At Choose Your Plants, click Start in the controller.
+
+The bot selects a scene-appropriate loadout, presses Let's Rock, then plants
+through the real seed cards. PvZ therefore applies normal sun costs and card
+cooldowns. It reads live zombies and plants to choose a row and tile, and it
+re-evaluates the board after plants are eaten.
+
+Auto-collect is enabled when the controller connects, and the controller keeps
+sun at 5,000,000 whenever a board is loaded.
+
+Leave "Free planting" OFF for normal cooldown and sun behavior.
+
+Supported game build:
+English Origin GOTY 1.2.0.1073
+
+Emergency Stop stops the bot, restores controller-owned patches, and detaches.

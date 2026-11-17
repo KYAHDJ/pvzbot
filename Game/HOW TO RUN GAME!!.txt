@@ -1,0 +1,5 @@
+To play game, go inside the Plants Vs Zombies GOTY folder, right click and run 'PlantsVsZombies' as administrator
+
+If you getany missing dll errors, go inside the _Redist folder and install 'DXSETUP'
+
+This is the game of the year edition.
